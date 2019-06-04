@@ -153,9 +153,6 @@ coef_est4=as.vector(coef(lm(calworks ~ income)->lm0));coef_est4
 X4=matrix(nr=length(income),ncol=2,c(rep(1,length(income)),income))
 hatcalworks=X4%*%coef_est4
 
-summary(lm(Score~1+lunch+hatcalworks+STR))
-
-### GMM
 gmm.fit<-gmm(iv.moments, start.vals, y=Score, X=X, Z=Z,vcov="HAC")
 h=cbind(lunch,calworks,STR,income)
 g3<-Score~lunch+calworks+STR
