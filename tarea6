@@ -43,20 +43,12 @@ llik2 = function(data, par){
 res1 = optim(par=c(0.5,0.5,0.5), llik2, data=dat2) 
 res1$par
 
-###########################
-#data(CASchools)
-#CASchools$STR <- CASchools$students/CASchools$teachers
-#CASchools$score <- (CASchools$read + CASchools$math)/2
-
-#Variables de interÃ©s:
-#lunch<-CASchools$lunch
-#calworks<-CASchools$calworks
-#STR<-CASchools$STR
-#Score<-CASchools$score #Variable respuesta
+###########################  Punto 4 #################################
 
 install.packages("AER")
 library(AER)
 data(CASchools)
+View(CASchools)
 attach(CASchools)
 names(CASchools)
 Score<-(read+math)/2
@@ -80,6 +72,26 @@ while(tol[1]>0.001 & tol[2]>0.001 & tol[3]>0.001 & tol[4]>0.001 ){
   tol=abs(iteracion-coef_est)
 }
 res2$par
+
+summary(lm(Score~ lunch+calworks+STR))
+
+#Interpretación: 
+
+#B_0: Teniendo en cuenta que la tasa estudiante profesor es de 0 y que 
+# no se cuenta con ayudas sociales, el puntaje promedio en matemáticas 
+#y lenguaje es de 702.7 .
+
+#B_1: Manteniendo las variables calworks, STR constantes, se dice que 
+# por cada aumento unitario en la variable lunch, el puntaje promedio en mat.
+# y lenguaje disminuye-0.607 unidades.
+
+#B_2: Manteniendo las variables lunch, STR constantes, se dice que 
+#por cada aumento unitario en la variable calworks, el puntaje promedio
+#en mat. y leng. aumenta 0.0245 unidades.
+
+#B_3: Manteniendo las variables lunch, calworks constantes, se dice que 
+#por cada aumento unitario en la tasa estudiante profesor, el puntaje promedio
+#en mat. y leng. disminuye 0.0245 unidades.
 
 ################## maxima verosimilitud
 dat3=data.frame(x1=lunch, x2=calworks, x3=STR, y=Score)
@@ -106,6 +118,10 @@ while(tol2[1]>0.001 & tol2[2]>0.001 & tol2[3]>0.001 & tol2[4]>0.001 & tol2[5]>0.
 }
 res3$par
 
+#Interpretación:
+
+# \sigma^2: 
+
 #### MÃ©todo de los momentos
 det(t(X)%*%X)
 mean(t(X)%*%(Score - X%*%coef_est))
@@ -130,43 +146,17 @@ coef_est
 
 #### dos estapas:
 cor(calworks,income)
-SS_min4 = function(data,par){
-  b0=par[1]
-  b1=par[2]
-  loss = with(data,sum((b0+b1*x-y)^2)) #FunciÃÂ³n de pÃÂ©rdida
-  return(loss)
-}
+
 dat4=data.frame(x=income,y=calworks)
 res4 = optim(par=c(.5,.5),SS_min4, data=dat4) ;res4$par
 coef_est4=as.vector(coef(lm(calworks ~ income)->lm0));coef_est4
 X4=matrix(nr=length(income),ncol=2,c(rep(1,length(income)),income))
 hatcalworks=X4%*%coef_est4
+
 summary(lm(Score~1+lunch+hatcalworks+STR))
 
 ### GMM
-Z=matrix(nr=420,ncol=5, c(rep(1,420),lunch,calworks,STR,income))
-X=matrix(nr=420,ncol=4, c(rep(1,420),lunch,calworks,STR))
-Y=Score
-Pz=Z%*%solve(t(Z)%*%Z)%*%t(Z)
-v1=t(X)%*%Pz%*%Y
-v2=round(t(X)%*%Pz%*%X,2)
-t(Z)%*%X
-Dg <- function(tet,x) {
-  G <- matrix(c(-2*v1[1]+tet[2]*(v2[2,1]+v2[1,2])+tet[3]*(v2[3,1]+v2[1,3])+tet[4]*(v2[4,1]+v2[1,4])
-                ,),
-              nrow=3,ncol=2) # 3momentos , 2 parÃÂ¡metros
-  return(G)
-}
-dat4=data.frame(x1=lunch, x2=calworks, x3=STR,z=income, y=Score)
-ols.moments = function(param,data=NULL) {  
-  data = as.matrix(data)  
-  y=data[,5]  
-  x=cbind(1,data[,c(1:3)]) # add the intercept and remove y (1st data col)  
-  z=cbind(1,data[,c(1:4)])
-  t(z)%*%(y - x%*%param) 
-} 
-start.vals=c(0,0,0,1)
-
-
-fit<-ivreg(Score ~ lunch+calworks+STR |lunch+calworks+income+STR)
-summary(fit)
+gmm.fit<-gmm(iv.moments, start.vals, y=Score, X=X, Z=Z,vcov="HAC")
+h=cbind(lunch,calworks,STR,income)
+g3<-Score~lunch+calworks+STR
+summary(res<-gmm(g3,x=h))
